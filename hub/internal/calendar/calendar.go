@@ -33,6 +33,7 @@ import (
 	"unicode/utf8"
 
 	"life/hub/internal/cadence"
+	"life/hub/internal/format"
 	"life/hub/internal/notify"
 	"life/hub/internal/store"
 	"life/hub/internal/threads"
@@ -2877,8 +2878,5 @@ func firstLine(s string, n int) string {
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
 		s = s[:i]
 	}
-	if len(s) > n {
-		s = s[:n] + "…"
-	}
-	return s
+	return format.Truncate(s, n)
 }

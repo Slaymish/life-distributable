@@ -1528,3 +1528,17 @@ func TestARowDismissedBeforeItsDayIsCancelled(t *testing.T) {
 		t.Fatalf("the row stays, dismissed: %+v", it)
 	}
 }
+
+// A prompt's text is free text: an emoji, an accent, a curly quote. The cap
+// used to be a byte slice, so a cut at n inside a multi-byte character left
+// invalid UTF-8 in the calendar row (a "�" in the app, and bad JSON on the
+// way). Every length has to come back whole.
+func TestFirstLineKeepsWholeCharacters(t *testing.T) {
+	s := "Buy the 🧺 basket and the 🚀 launch plan — for the flat"
+	for n := 1; n <= len([]rune(s)); n++ {
+		got := firstLine(s, n)
+		if !utf8.ValidString(got) || strings.ContainsRune(got, utf8.RuneError) {
+			t.Fatalf("n=%d: %q is not whole characters", n, got)
+		}
+	}
+}

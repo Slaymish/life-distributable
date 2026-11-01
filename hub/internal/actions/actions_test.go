@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"life/hub/internal/store"
 )
@@ -639,5 +640,27 @@ func TestDecisionRelayedToThread(t *testing.T) {
 	d, err := q.Decide(c.ID, true, "app", "")
 	if err != nil || d.ThreadID != "thread-new" || d.RunID != "7" {
 		t.Fatalf("%+v %v", d, err)
+	}
+}
+
+// The relay card's title is the peer session's own name, which is free text:
+// the 120-byte cap must not halve a character in it. The owner approves the
+// card as it reads, so a mangled title is the title they approved.
+func TestRelayTitleKeepsWholeCharacters(t *testing.T) {
+	q, _, _ := setup(t)
+	var title string
+	q.RelayTarget = func(string) (string, error) { return title, nil }
+	q.Relay = func(from, to, text, actionID string) (string, error) { return "delivered", nil }
+	gated := true
+	for pad := 0; pad < 130; pad++ {
+		title = strings.Repeat("a", pad) + "🚀" + " plan"
+		a, err := q.Propose(Proposal{ThreadID: "th-a", Title: "tidy", ExecType: "relay", Gated: &gated,
+			ExecPayload: json.RawMessage(`{"to":"th-b","text":"rename it"}`)})
+		if err != nil {
+			t.Fatalf("pad %d: %v", pad, err)
+		}
+		if !utf8.ValidString(a.Title) || strings.ContainsRune(a.Title, utf8.RuneError) {
+			t.Fatalf("pad %d: %q is not whole characters", pad, a.Title)
+		}
 	}
 }
